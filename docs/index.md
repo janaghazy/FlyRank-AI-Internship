@@ -26,7 +26,7 @@ The cost of a bad call? If I flag a page that doesn't actually need work, the ed
 
 ## 2. Data safety
 
-I used the data from the FlyRank internship warehouse. It is hosted on Hugging Face at https://huggingface.co/datasets/FlyRank/internship-lanes. For this analysis, I worked specifically with the "ai_opportunity" subset, filtering down to just March 2026.
+I used the data from the FlyRank internship warehouse. It is hosted on Hugging Face at https://huggingface.co/datasets/FlyRank/internship-warehouse. For this analysis, I worked specifically with the "ai_opportunity" subset, filtering down to just March 2026.
 
 I started with roughly 100,000 rows. After scrubbing out pages with super low impressions and clipping some obvious outliers, I landed on about 88,000 usable rows.
 
@@ -48,7 +48,7 @@ I went with Gradient Boosting for this. It just works well with tabular data, an
 
 The features I fed into it were: average position, total impressions, page age in days, content type (keyword article vs. feedly article), binned position tiers, and binned impression tiers.
 
-I kept it clean—nothing derived from clicks made it into the feature set.
+My label definition is the CTR Gap, calculated as expected CTR minus actual CTR. My core assumption is that historical search position is a valid proxy for expected clicks, which allows me to calculate a fair opportunity score.
 
 ---
 
@@ -111,7 +111,7 @@ I locked the random seed to 42 so runs stay consistent. You'll just need Python 
 
 ## Acknowledgments
 
-This project was built on the FlyRank ML Internship dataset, which is publicly available at https://huggingface.co/datasets/FlyRank/internship-lanes. I appreciate the FlyRank team for making real-world search data accessible for this kind of work.
+This project was built on the FlyRank ML Internship dataset, which is publicly available at https://huggingface.co/datasets/FlyRank/internship-warehouse. I appreciate the FlyRank team for making real-world search data accessible for this kind of work.
 
 *Built on the FlyRank ML Internship dataset*  
 *[FlyRank AI](https://flyrank.ai)*
