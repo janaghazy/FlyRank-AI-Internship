@@ -44,7 +44,7 @@ When I ran it against the evaluation set, the numbers weren't great. The Mean Ab
 
 ## 4. Model / analysis
 
-I went with XGBoost for this. It just works well with tabular data, and it's good at picking up those non-linear patterns that a linear model would totally miss. For instance, brand-new pages and years-old pages both tend to struggle with CTR, but a straight-line model would never catch that U-shape. Boosting handles it naturally.
+I went with Gradient Boosting for this. It just works well with tabular data, and it's good at picking up those non-linear patterns that a linear model would totally miss. For instance, brand-new pages and years-old pages both tend to struggle with CTR, but a straight-line model would never catch that U-shape. Boosting handles it naturally.
 
 The features I fed into it were: average position, total impressions, page age in days, content type (keyword article vs. feedly article), binned position tiers, and binned impression tiers.
 
