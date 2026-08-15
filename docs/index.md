@@ -1,84 +1,76 @@
-# Finding Pages That Do Not Get Clicks: A Model to Score Click-Through Rate Opportunities
+Author: Jana Ghazy
+Lane: CTR / Engagement Opportunity Scoring
+Repo: https://github.com/janaghazy/FlyRank-AI-Internship
+Date: August 2026
 
-**Author:** Jana Ghazy
+1. Problem framing
+Let's be real content teams don't have time to manually audit thousands of pages. The core question here is simple: out of all the pages we have, which ones are actually worth fixing?
 
-**Lane:** CTR / Engagement Opportunity Scoring
+When you dig into search data, you see it all the time. A page ranks really well, right there on page one or two, but for whatever reason, it is barely getting any clicks. That is a traffic leak. And because there are so many pages, a human almost never spot it.
 
-**Date:** August 2026
+So, what's the output? A ranked list. Nothing fancy. An editor looks at this list and asks: does this page need a better title? Should we rewrite the meta description? Or does the whole article need a refresh?
 
----
+The cost of a bad call? If I flag a page that doesn't actually need work, the editor just burned an hour for no gain. But if I miss a real problem page, that page stays broken. We keep losing traffic.
 
-## Abstract
+2. Data safety
+I used the data from the FlyRank internship warehouse. It is hosted on Hugging Face at https://huggingface.co/datasets/FlyRank/internship-lanes. For this analysis, I worked specifically with the "ai_opportunity" subset, filtering down to just March 2026.
 
-I looked at pages that show up in search results but do not get clicks. My goal was to create something that helps content teams figure out which pages to fix first. I used search data from FlyRank to calculate the difference between how many clicks a page should get based on its position and how many it actually gets. I call this the CTR gap. I trained a model to predict this gap using things like position, impressions, page age and content type. The model does a decent job of finding patterns even with limited information. Position turned out to be the most important factor, followed by page age and impressions. The final result is a list of pages with the biggest gaps so teams know where to start.
+I started with roughly 100,000 rows. After scrubbing out pages with super low impressions and clipping some obvious outliers, I landed on about 88,000 usable rows.
 
----
+I was careful about leakage here. Raw clicks were never used as a feature that would be way too easy, and the model would just cheat its way to the answer. I also removed any columns that could tie back to a specific client. The client hash IDs were used purely for grouping during the train/test split, but never passed into the model itself. I skipped trend metrics like "trend_direction" too, since they're derived from click behavior.
 
-## 1. Introduction
+3. Baseline
+Before building the real model, I threw together a basic baseline. The logic was simple: assume your click-through rate depends entirely on your search ranking. The higher your average position, the more clicks you should get. 
 
-Sometimes pages rank well in search results but still do not get enough clicks. This is a problem because it means lost traffic and missed opportunities. I wanted to find out which pages content teams should look at first to improve click-through rates. The answer is simple: find pages where the gap between expected and actual clicks is the biggest. Then update the title or meta description. If you make a mistake you waste time. If you miss an opportunity the page keeps underperforming.
+When I ran it against the evaluation set, the numbers weren't great. The Mean Absolute Error sat around 0.005. The R²? Practically zero. It basically told me that position alone explains almost nothing about why pages underperform. That was a good sign, it meant there was actual work for a model to do.
 
----
+4. Model / analysis
+I went with XGBoost for this. It just works well with tabular data, and it's good at picking up those non-linear patterns that a linear model would totally miss. For instance, brand-new pages and years-old pages both tend to struggle with CTR, but a straight-line model would never catch that U-shape. Boosting handles it naturally.
 
-## 2. Data
+The features I fed into it were: average position, total impressions, page age in days, content type (keyword article vs. feedly article), binned position tiers, and binned impression tiers.
 
-I used data from the FlyRank internship warehouse. This data is completely anonymous so it does not include any client information or identifiable website details. I looked at two tables: one with page-level information and one with daily search metrics. I only used data from March 2026. I started with 100,000 rows and ended up with about 88,000 after cleaning. I removed pages with fewer than 100 impressions and got rid of extreme outliers. To keep things honest I did not use clicks as a feature because that would leak the answer.
+I kept it clean—nothing derived from clicks made it into the feature set.
 
----
+5. Evaluation
+I split my data 80/20. But I was careful—I grouped by page ID first so that a single page's data never got split across both the train and test sets. If I hadn't done that, the model would essentially get to practice on the same page it was being tested on. That would be bias.
 
-## 3. Methodology
+The model outperformed the baseline. MAE dropped to 0.003, which is roughly a 40% reduction. The R² landed at 0.16. That's not massive, but it's enough to prove the model is catching real signals.
 
-My idea is simple. For any page that shows up in search results you can guess roughly how many clicks it should get based on its position. A page in position 1 should do better than a page in position 10. I set up a rule for expected click-through rates based on position. Then I calculated the actual click-through rate from the data and defined the target as the difference between expected and actual. A positive difference means the page is getting fewer clicks than it should.
+Digging into the errors: it had a rough time with pages that had huge impression counts (above 10,000). Those outlier pages often had massive CTR gaps that were just hard to guess. It also slightly underestimated gaps for pages under 30 days old, which tells me "content_age" might need a tweak to handle new content better.
 
-I used a Gradient Boosting model to predict this difference. I also created some extra features like position tiers and impression tiers. The final feature set included things like position, impressions, content age and content type. I split the data into training and testing sets.
+6. Interpretation
+The model's priorities made a lot of sense. Position was the dominant factor, driving nearly half of the model's decision-making. Page age and impressions together accounted for about 25%.
 
----
+But here's where it got interesting. Content type—whether a page was a "keyword article" or a "feedly article"—had almost zero impact. The model didn't care. That's a valuable negative result. It tells the us: don't overthink the article format when you're deciding what to fix. It all comes back to rank and how stale the content is.
 
-## 4. Results
+7. Recommendation
+First priority: The top 10 pages from the list below. These have the biggest CTR gaps. Editors should target these immediately for title and meta description updates. I'm pretty confident these pages are genuinely underperforming relative to their rank.
 
-The model did a better job than a simple rule. It achieved an error rate of 0.003 and an R² of 0.16 which means it captured some meaningful patterns. When I looked at what factors were most important, position stood out clearly as the strongest signal. It made up about half of the model's decision-making. Content age mattered too, making up about a quarter combined. Impressions played a smaller role. The main takeaway is that position is the most useful thing to look at when trying to find pages that underperform on clicks. The model helps surface those pages more reliably than a fixed rule.
+Second priority: For older pages with moderate gaps, a full content refresh might be better than just a title change—update the body copy and the publish date to make the page feel relevant again.
 
----
+Third priority: For pages with tiny gaps, do nothing. Just monitor them. The rank might stabilize on its own.
 
-## 5. Limitations
+Here's the top 10 the model flagged:
 
-I need to be honest about what this work does and does not prove. I can say that pages in lower positions tend to get lower click-through rates and that older content tends to do worse. But I cannot say that this is how search algorithms work or that updating a page will definitely improve its click-through rate. The main limitations are that I only used one month of data and the feature set is still fairly small. So the results are directional, not definitive.
+Rank	Page ID	Position	Gap	Score
+1	content_945d6ff91386...	8.6	0.0031	139
+2	content_1642f339bd6e...	4.1	0.0041	94
+3	content_60b99970e55b...	3.9	0.0040	61
+4	content_0c5606abaaab...	4.1	0.0041	52
+5	content_6a9c79f55413...	1.6	0.0046	43
+Important caveat: I can't guarantee that rewriting a title will automatically spike CTR. That's ultimately down to human judgment and testing. The model points at the opportunity, it doesn't deliver the fix.
 
----
+8. Reproducibility
+Everything you need to reproduce this is up on GitHub.
 
-## 6. Ranked Recommendations
+The main repo is here: https://github.com/janaghazy/FlyRank-AI-Internship
+The exact notebook for the final results is at: https://github.com/janaghazy/FlyRank-AI-Internship/blob/main/work/Capstone.ipynb
+If you want to dig through the feature experiments and early exploration, they're in the notebooks folder: https://github.com/janaghazy/FlyRank-AI-Internship/tree/main/work/notebooks
 
-The model flagged these as the top 10 pages with the biggest click-through rate gaps. Each one is a candidate for reviewing and updating the title or meta description.
+I locked the random seed to 42 so runs stay consistent. You'll just need Python 3.10, the usual data science stack, and the requirements.txt file in the repo.
 
-| Rank | Page ID | Position | Gap | Score |
-|------|---------|----------|-----|-------|
-| 1 | content_945d6ff91386... | 8.6 | 0.0031 | 139 |
-| 2 | content_1642f339bd6e... | 4.1 | 0.0041 | 94 |
-| 3 | content_60b99970e55b... | 3.9 | 0.0040 | 61 |
-| 4 | content_0c5606abaaab... | 4.1 | 0.0041 | 52 |
-| 5 | content_6a9c79f55413... | 1.6 | 0.0046 | 43 |
-| 6 | content_0bca6d9a85a9... | 7.5 | 0.0031 | 31 |
-| 7 | content_34a70fea29d1... | 3.2 | 0.0040 | 31 |
-| 8 | content_0c5606abaaab... | 4.3 | 0.0041 | 26 |
-| 9 | content_1ff623168718... | 6.7 | 0.0031 | 24 |
-| 10 | content_bb2a9972810d... | 3.4 | 0.0040 | 24 |
+Acknowledgments
+This project was built on the FlyRank ML Internship dataset, which is publicly available at https://huggingface.co/datasets/FlyRank/internship-lanes. I appreciate the FlyRank team for making real-world search data accessible for this kind of work.
 
-The full ranked list is saved in `work/outputs/capstone_recommendations.csv`.
-
----
-
-## 7. Reproducibility
-
-All the code and analysis is available in the GitHub repository. The dataset is hosted on Hugging Face.
-
----
-
-## 8. Acknowledgments
-
-This work was built using the FlyRank ML Internship dataset. I thank the FlyRank team for making the data available and for their support.
-
----
-
-*Built on the FlyRank ML Internship dataset*
-
-*[FlyRank AI](https://flyrank.ai)*
+Built on the FlyRank ML Internship dataset
+FlyRank AI
