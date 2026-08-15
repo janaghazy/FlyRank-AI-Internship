@@ -6,6 +6,7 @@
 **Date:** August 2026
 
 ---
+## Abstract
 
 I looked at pages that show up in search results but do not get clicks. My goal was to create something that helps content teams figure out which pages to fix first. I used search data from FlyRank to train a model that predicts the gap between expected and actual click-through rates. The model does a decent job of finding patterns, with position and page age being the biggest drivers. The final result is a ranked list of pages with the biggest gaps so teams know exactly where to start.
 
