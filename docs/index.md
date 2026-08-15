@@ -26,7 +26,7 @@ The cost of a bad call? If I flag a page that doesn't actually need work, the ed
 
 ## 2. Data safety
 
-I used the data from the FlyRank internship warehouse. It is hosted on Hugging Face at https://huggingface.co/datasets/FlyRank/internship-warehouse. For this analysis, I worked specifically with the "ai_opportunity" subset, filtering down to just March 2026.
+I used the data from the FlyRank internship warehouse. It is hosted on Hugging Face at https://huggingface.co/datasets/FlyRank/internship-warehouse. For this analysis, I joined the dim_content table with the fact_content_daily_performance table on content_hash_id, filtering the daily data down to just March 2026.
 
 I started with roughly 100,000 rows. After scrubbing out pages with super low impressions and clipping some obvious outliers, I landed on about 88,000 usable rows.
 
